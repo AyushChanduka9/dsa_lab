@@ -252,15 +252,26 @@ int main() {
     listen(server, 3);
     printf("Server listening on port %d...\n", PORT);
 
+    setbuf(stdout, NULL); // Disable buffering for real-time logs
+
     while (1) {
         client = accept(server, (struct sockaddr *)&client_addr, &addr_len);
         if (client == INVALID_SOCKET) continue;
 
         char buffer[BUFFER_SIZE] = {0};
-        recv(client, buffer, BUFFER_SIZE, 0);
+        int bytes_received = recv(client, buffer, BUFFER_SIZE - 1, 0);
+        
+        if (bytes_received <= 0) {
+            closesocket(client);
+            continue;
+        }
+        buffer[bytes_received] = 0; // Null terminate
 
-        char method[16], path[256];
-        sscanf(buffer, "%s %s", method, path);
+        char method[16] = {0}, path[256] = {0};
+        if (sscanf(buffer, "%15s %255s", method, path) != 2) {
+            closesocket(client);
+            continue;
+        }
         
         char* body = strstr(buffer, "\r\n\r\n");
         if (body) body += 4;
