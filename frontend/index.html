@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus: Secure Time-Locked Priority Banking System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+</head>
+
+<body class="light-theme">
+
+    <!-- LOGIN PAGE -->
+    <div id="login-page" class="container vh-100 d-flex align-items-center justify-content-center">
+        <div class="glass-card p-5" style="max-width: 400px; width: 100%;">
+            <h2 class="text-gradient mb-4 text-center">Nexus Secure</h2>
+
+            <div id="login-error" class="alert alert-danger d-none"></div>
+
+            <div class="mb-3">
+                <label class="text-secondary">Identity</label>
+                <select id="user-role" class="form-select bg-white text-dark border-success border-secondary"
+                    onchange="toggleLoginFields()">
+                    <option value="customer">Customer</option>
+                    <option value="admin">System Admin</option>
+                </select>
+            </div>
+
+            <!-- Customer Auth Fields -->
+            <div id="customer-auth">
+                <div class="mb-3">
+                    <label>Account Number</label>
+                    <input type="number" id="login-id" class="form-control bg-white text-dark border-success"
+                        placeholder="50000">
+                </div>
+                <div class="mb-3">
+                    <label>Secure PIN</label>
+                    <input type="password" id="login-pin" class="form-control bg-white text-dark border-success"
+                        placeholder="****">
+                </div>
+            </div>
+
+            <button onclick="login()" class="btn btn-primary w-100 glow-btn">Access System</button>
+        </div>
+    </div>
+
+    <!-- CUSTOMER DASHBOARD -->
+    <div id="customer-page" class="d-none">
+        <nav class="navbar navbar-light bg-glass px-4">
+            <span class="navbar-brand font-weight-bold">Nexus User Terminal</span>
+            <div class="text-end">
+                <span class="text-secondary d-block" id="user-name">Welcome</span>
+                <span class="text-gradient" id="user-balance">₹0.00</span>
+                <span class="badge bg-info ms-2" id="user-tier">-</span>
+            </div>
+            <button onclick="logout()" class="btn btn-outline-danger btn-sm ms-3">Disconnect</button>
+        </nav>
+
+        <div class="container mt-5">
+            <div class="row">
+                <div class="col-md-5">
+                    <div class="glass-card p-4">
+                        <h4>Transfer Funds</h4>
+                        <div class="mb-3">
+                            <label>Receiver Account ID</label>
+                            <input type="number" id="tx-receiver" class="form-control bg-white text-dark border-success"
+                                placeholder="Account #">
+                        </div>
+                        <div class="mb-3">
+                            <label>Amount (₹)</label>
+                            <input type="number" id="tx-amount" class="form-control bg-white text-dark border-success"
+                                placeholder="0.00">
+                        </div>
+                        <div class="mb-3">
+                            <label>Urgency</label>
+                            <select id="tx-urgency" class="form-select bg-white text-dark border-success">
+                                <option value="0">Normal Transfer</option>
+                                <option value="50">EMI / Bill Payment</option>
+                                <option value="100">Medical Emergency</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label>Verify PIN</label>
+                            <input type="password" id="tx-pin" class="form-control bg-white text-dark border-success"
+                                placeholder="****">
+                        </div>
+                        <button onclick="createTx()" class="btn btn-success w-100">Initiate Transfer</button>
+                        <div id="tx-msg" class="mt-2 text-center text-warning"></div>
+                    </div>
+                </div>
+
+                <div class="col-md-7">
+                    <div class="glass-card p-4">
+                        <h4>Your Outgoing Activity</h4>
+                        <table class="table table-hover mt-3">
+                            <thead>
+                                <tr>
+                                    <th>TxID</th>
+                                    <th>To</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customer-tx-list">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN DASHBOARD -->
+    <div id="admin-page" class="d-none">
+        <nav class="navbar navbar-light bg-glass px-4">
+            <span class="navbar-brand text-gradient">Nexus Core Overwatch</span>
+            <div>
+                <button onclick="processTx()" class="btn btn-success me-2">Process Next (Manual)</button>
+                <button onclick="logout()" class="btn btn-outline-danger btn-sm">Disconnect</button>
+            </div>
+        </nav>
+
+        <div class="container-fluid mt-4 px-4">
+            <div class="row g-4">
+                <!-- STATS -->
+                <div class="col-12">
+                    <div class="d-flex gap-3">
+                        <div class="glass-card p-3 flex-fill text-center">
+                            <h6 class="text-secondary">Waiting (PQ)</h6>
+                            <h2 id="stat-pq">0</h2>
+                        </div>
+                        <div class="glass-card p-3 flex-fill text-center">
+                            <h6 class="text-secondary">Time Locked</h6>
+                            <h2 id="stat-locked" class="text-warning">0</h2>
+                        </div>
+                        <div class="glass-card p-3 flex-fill text-center">
+                            <h6 class="text-secondary">Processed</h6>
+                            <h2 id="stat-processed" class="text-success">0</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TIME LOCK & NEW CUSTOMER -->
+                <div class="col-md-4">
+                    <div class="glass-card p-3 mb-3 h-50">
+                        <h5 class="text-warning border-bottom pb-2">Time Lock Protocol</h5>
+                        <div id="timelock-list" class="queue-container"></div>
+                    </div>
+
+                    <div class="glass-card p-3 mb-3">
+                        <h5 class="text-success border-bottom pb-2">New Customer Account</h5>
+                        <div class="mb-2">
+                            <label class="text-secondary small mb-1">Full Name</label>
+                            <input type="text" id="new-name" class="form-control mb-2 bg-white text-dark border-success"
+                                placeholder="e.g. Rahul Sharma">
+
+                            <label class="text-secondary small mb-1">Secure PIN</label>
+                            <input type="number" id="new-pin"
+                                class="form-control mb-2 bg-white text-dark border-success" placeholder="1234">
+
+                            <label class="text-secondary small mb-1">Initial Deposit (₹)</label>
+                            <input type="number" id="new-balance"
+                                class="form-control mb-2 bg-white text-dark border-success" placeholder="50000">
+
+                            <label class="text-secondary small mb-1">Account Tier</label>
+                            <select id="new-tier" class="form-select mb-2 bg-white text-dark border-success">
+                                <option value="0">Basic</option>
+                                <option value="20">Premium</option>
+                                <option value="50">VIP</option>
+                                <option value="80">Elite</option>
+                            </select>
+
+                            <button onclick="createCustomer()" class="btn btn-primary w-100 mt-2">Generate
+                                Account</button>
+                            <div id="new-cust-msg" class="text-success mt-2 text-center"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PRIORITY QUEUE & CUSTOMERS -->
+                <div class="col-md-8">
+                    <div class="glass-card p-3 mb-3">
+                        <h5 class="text-success border-bottom pb-2">Processing Queue (Priority Max Heap)</h5>
+                        <table class="table table-hover table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>ID</th>
+                                    <th>Sender > Recv</th>
+                                    <th>Amount</th>
+                                    <th>Eff. Priority</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pq-list">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="glass-card p-3">
+                        <h5 class="text-success border-bottom pb-2">Customer Database</h5>
+                        <div style="max-height: 150px; overflow-y: auto;">
+                            <table class="table table-hover table-sm">
+                                <thead>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Tier</th>
+                                    <th>Balance</th>
+                                </thead>
+                                <tbody id="all-customers-list"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
